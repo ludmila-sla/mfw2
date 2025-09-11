@@ -19,7 +19,6 @@ class livroRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "autor" => "required|string",
             "titulo" => "required|string",
             "sinopse" => "required|string",
             "capa" => "sometimes|string",

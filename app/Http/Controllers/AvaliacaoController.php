@@ -8,17 +8,17 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 
-class avaliacaoController extends Controller
+class AvaliacaoController extends Controller
 {
-    public function create(avaliacaoRequest $request)
+    public function create(avaliacaoRequest $request, $user = null)
     {
-        $user = Auth::user();
+        $user = Auth::user() ?? $user;
         if (!$user) {
             return response(['error' => 'Não autenticado'], 401);
         }
 
         $data = $request->all();
-        $data['_id'] = Str::uuid();
+        $data['_id'] = Str::uuid()->toString();
         $data['user_id'] = $user->id;
         $data['user_nome'] = $user->name;
 
@@ -27,9 +27,9 @@ class avaliacaoController extends Controller
         return response([], 201);
     }
 
-    public function delete($id)
+    public function delete($id, $user = null)
     {
-        $user = Auth::user();
+        $user = Auth::user() ?? $user;
         if (!$user) {
             return response(['error' => 'Não autenticado'], 401);
         }

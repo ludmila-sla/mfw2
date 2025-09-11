@@ -9,11 +9,11 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
-class capituloController extends Controller
+class CapituloController extends Controller
 {
-    public function create(capituloRequest $request)
+    public function create(capituloRequest $request, $user = null)
     {
-        $user = Auth::user();
+        $user = $user ?: Auth::user();
         if (!$user) return response(['error' => 'Não autenticado'], 401);
 
         $data = $request->all();
@@ -44,9 +44,9 @@ class capituloController extends Controller
         return response([], 201);
     }
 
-    public function edit($id, capituloRequest $request)
+    public function edit($id, capituloRequest $request,  $user = null)
     {
-        $user = Auth::user();
+        $user = Auth::user() ?? $user;
         if (!$user) return response(['error' => 'Não autenticado'], 401);
 
         $capitulo = DB::table('capitulos')
@@ -65,9 +65,9 @@ class capituloController extends Controller
         return response([], 200);
     }
 
-    public function delete($id)
+    public function delete($id,  $user = null)
     {
-        $user = Auth::user();
+        $user = Auth::user() ?? $user;
         if (!$user) return response(['error' => 'Não autenticado'], 401);
 
         $capitulo = DB::table('capitulos')
@@ -94,15 +94,18 @@ class capituloController extends Controller
         return response([], 200);
     }
 
-    public function list($autor_id, $livro_id)
+    public function list($autor_id, $livro_id,  $user = null)
     {
         $capitulos = DB::table('capitulos')
             ->where('autor_id', $autor_id)
             ->where('livro', $livro_id)
             ->where('deletado', '!=', true)
-            ->get();
+            ->get()
+             ->map(function ($capitulo) {
+            return (array) $capitulo;
+        });
 
-        $capituloIds = $capitulos->pluck('_id')->toArray();
+         $capituloIds = array_column($capitulos->toArray(), '_id');
 
         $paragrafos = DB::table('paragrafos')
             ->whereIn('capitulo_id', $capituloIds)
@@ -111,11 +114,13 @@ class capituloController extends Controller
             ->get()
             ->groupBy('capitulo_id');
 
-        $capitulos->map(function ($capitulo) use ($paragrafos) {
-            $capitulo->paragrafos = $paragrafos[$capitulo->_id] ?? [];
-        });
+         $capitulos = $capitulos->map(function ($capitulo) use ($paragrafos) {
+        $capitulo['_id'] = $capitulo['_id'] ?? $capitulo['id'] ?? null; // garante que exista
+        $capitulo['paragrafos'] = $paragrafos[$capitulo['_id']] ?? [];
+        return $capitulo;
+    });
 
-        $user = Auth::user();
+        $user = Auth::user() ?? $user;
         $rascunhos = [];
         if ($user && $user->id == $autor_id) {
             $rascunhos = DB::table('rascunhos')
@@ -130,13 +135,13 @@ class capituloController extends Controller
         ], 200);
     }
 
-    public function rascunho(capituloRequest $request)
+    public function rascunho(capituloRequest $request,  $user = null)
     {
-        $user = Auth::user();
+        $user = Auth::user() ?? $user;
         if (!$user) return response(['error' => 'Não autenticado'], 401);
 
         $data = $request->all();
-        $data['_id'] = Str::uuid();
+        $data['_id'] = Str::uuid()->toString();
         $data['autor_id'] = $user->id;
         $data['autor_nome'] = $user->name;
         $data['createdAt'] = Carbon::now();
@@ -162,6 +167,6 @@ class capituloController extends Controller
             DB::table('capitulos')->where('_id', $capitulo_id)->update(['leituras' => $leituras + 1]);
         }
 
-        return response($capitulo, 200);
+        return response()->json($capitulo, 200);
     }
 }

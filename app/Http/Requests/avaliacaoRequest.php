@@ -19,7 +19,6 @@ class avaliacaoRequest extends FormRequest
     public function rules(): array
     {
         return [
-            "user" => "required|string",
             "onde" => "required|string|in:livro,capitulo,paragrafo",
             "onde_id" => "required|string",
             "comentario" => "sometimes|string",

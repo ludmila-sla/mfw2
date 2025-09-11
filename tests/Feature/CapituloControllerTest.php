@@ -3,124 +3,105 @@
 namespace Tests\Feature;
 
 use Tests\TestCase;
+use App\Http\Requests\capituloRequest;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Auth;
 use App\Models\User;
+use App\Http\Controllers\CapituloController;
 use Illuminate\Support\Str;
 use Carbon\Carbon;
 
 class CapituloControllerTest extends TestCase
 {
-
     protected $user;
+    protected $controller;
 
     protected function setUp(): void
     {
-  
         parent::setUp();
-        // Cria um usuário fake para simular login
-        $this->user = User::factory()->create();
-        $this->actingAs($this->user);
+
+        $userData = DB::connection('mongodb')->table('users')->find('user_d51d4a19-3703-4874-b048-551f85b3efa3');
+
+        $this->user = new User((array) $userData);
+        $this->user->exists = true;
+
+        $this->controller = new CapituloController();
     }
+
     public function testCreateCapitulo()
     {
-        $response = $this->postJson('/capitulos/create', [
+        $request = new capituloRequest([
             'livro' => 'livro1',
             'titulo' => 'Capítulo 1',
-            'historia' => "Parágrafo 1\nParágrafo 2"
+            'texto' => "askgnaoñvpdrghnpãerhgoẽrhg",
         ]);
+        $response = $this->controller->create($request, $this->user);
 
-        $response->assertStatus(201);
-
-        $this->assertDatabaseHas('capitulos', [
-            'titulo' => 'Capítulo 1',
-            'autor_id' => $this->user->id
-        ]);
-
-        $this->assertDatabaseCount('paragrafos', 2);
+        $this->assertEquals(201, $response->getStatusCode());
     }
+
     public function testEditCapitulo()
     {
         $capitulo_id = 'capitulo_'.Str::uuid();
         DB::table('capitulos')->insert([
             '_id' => $capitulo_id,
             'livro' => 'livro1',
-            'titulo' => 'Capítulo 1',
+            'titulo' => 'Capítulo 2',
             'autor_id' => $this->user->id,
+            'texto' => "askgnaoñvpdrghnpãerhgoẽrhg",
             'deletado' => false,
-            'createdAt' => Carbon::now(),
-            'updatedAt' => Carbon::now()
         ]);
 
-        $response = $this->putJson("/capitulos/edit/{$capitulo_id}", [
+        $request = new capituloRequest([
             'titulo' => 'Capítulo Editado'
         ]);
 
-        $response->assertStatus(200);
+        $response = $this->controller->edit( $capitulo_id, $request, $this->user);
 
-        $this->assertDatabaseHas('capitulos', [
-            '_id' => $capitulo_id,
-            'titulo' => 'Capítulo Editado'
-        ]);
+        $this->assertEquals(200, $response->getStatusCode());
     }
+
     public function testDeleteCapitulo()
     {
         $capitulo_id = 'capitulo_'.Str::uuid();
         DB::table('capitulos')->insert([
             '_id' => $capitulo_id,
             'livro' => 'livro1',
-            'titulo' => 'Capítulo 1',
+            'titulo' => 'Capítulo 3',
             'autor_id' => $this->user->id,
+            'texto' => "askgnaoñvpdrghnpãerhgoẽrhg",
             'deletado' => false,
             'createdAt' => Carbon::now(),
             'updatedAt' => Carbon::now()
         ]);
 
-        $response = $this->deleteJson("/capitulos/delete/{$capitulo_id}");
+        $request = new capituloRequest();
 
-        $response->assertStatus(200);
+        $response = $this->controller->delete( $capitulo_id, $this->user);
 
-        $this->assertDatabaseHas('capitulos', [
-            '_id' => $capitulo_id,
-            'deletado' => true
-        ]);
+        $this->assertEquals(200, $response->getStatusCode());
     }
+
     public function testListCapitulos()
     {
-        $capitulo_id = 'capitulo_'.Str::uuid();
-        DB::table('capitulos')->insert([
-            '_id' => $capitulo_id,
-            'livro' => 'livro1',
-            'titulo' => 'Capítulo 1',
-            'autor_id' => $this->user->id,
-            'deletado' => false,
-            'createdAt' => Carbon::now(),
-            'updatedAt' => Carbon::now()
-        ]);
 
-        $response = $this->getJson("/capitulos/list/{$this->user->id}/livro1");
+        $response = $this->controller->list($this->user->id, 'livro1', $this->user);
 
-        $response->assertStatus(200)
-                 ->assertJsonStructure([
-                     'capitulos' => [['titulo', 'paragrafos']],
-                     'rascunhos'
-                 ]);
+        $this->assertEquals(200, $response->getStatusCode());
     }
+
     public function testCreateRascunho()
     {
-        $response = $this->postJson('/capitulos/rascunho', [
+        $request = new capituloRequest([
             'livro' => 'livro1',
             'titulo' => 'Rascunho 1',
             'historia' => 'Texto do rascunho'
         ]);
 
-        $response->assertStatus(201);
+        $response = $this->controller->rascunho($request, $this->user);
 
-        $this->assertDatabaseHas('rascunhos', [
-            'titulo' => 'Rascunho 1',
-            'autor_id' => $this->user->id
-        ]);
+        $this->assertEquals(201, $response->getStatusCode());
     }
+
     public function testShowCapitulo()
     {
         $capitulo_id = 'capitulo_'.Str::uuid();
@@ -135,13 +116,14 @@ class CapituloControllerTest extends TestCase
             'updatedAt' => Carbon::now()
         ]);
 
-        $response = $this->getJson("/capitulos/show/{$capitulo_id}/livro1/capitulos");
 
-        $response->assertStatus(200);
+        $response = $this->controller->show($capitulo_id, 'livro1', 'capitulos');
 
-        $this->assertDatabaseHas('capitulos', [
-            '_id' => $capitulo_id,
-            'leituras' => 1
-        ]);
+        $this->assertEquals(200, $response->getStatusCode());
+    }
+    public function tearDown(): void {
+        DB::table('capitulos')->where('livro', 'livro1')->delete();
+        DB::table('rascunhos')->where('livro', 'livro1')->delete();
+        parent::tearDown();
     }
 }

@@ -9,11 +9,11 @@ use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 
-class livroController extends Controller
+class LivroController extends Controller
 {
-    public function create(livroRequest $request)
+    public function create(livroRequest $request, $user = null)
     {
-        $user = Auth::user();
+        $user = Auth::user() ?? $user;
         if (!$user) {
             return response(['error' => 'Não autenticado'], 401);
         }
@@ -31,9 +31,9 @@ class livroController extends Controller
         return response([], 201);
     }
 
-    public function edit($id, livroRequest $request)
+    public function edit($id, livroRequest $request, $user = null)
     {
-        $user = Auth::user();
+        $user = Auth::user() ?? $user;
         if (!$user) {
             return response(['error' => 'Não autenticado'], 401);
         }
@@ -59,9 +59,9 @@ class livroController extends Controller
         return response([], 200);
     }
 
-    public function delete($id)
+    public function delete($id, $user = null)
     {
-        $user = Auth::user();
+        $user = Auth::user() ?? $user;
         if (!$user) {
             return response(['error' => 'Não autenticado'], 401);
         }
@@ -88,7 +88,7 @@ class livroController extends Controller
         return response([], 200);
     }
 
-    public function list($autor_id)
+    public function list($autor_id )
     {
         $livros = DB::table('livros')
             ->where('autor_id', $autor_id)
@@ -105,7 +105,7 @@ class livroController extends Controller
             ->where('deletado', '!=', true)
             ->first();
 
-        return response($livro, $livro ? 200 : 404);
+        return response()->json($livro, $livro ? 200 : 404);
     }
 
     public function search(Request $request)
